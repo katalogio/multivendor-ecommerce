@@ -3,6 +3,7 @@ package com.sprintell.multivendor.ecommerce.service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.MailException;
 import org.springframework.mail.MailSendException;
@@ -13,14 +14,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class EmailService {
 
     @Autowired
     private final JavaMailSender javaMailSender;
 
-    public EmailService(JavaMailSender javaMailSender) {
-        this.javaMailSender = javaMailSender;
-    }
 
     public void sendVerificationOtpEmail(String userEmail, String otp, String subject, String text) {
         try {

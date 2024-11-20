@@ -25,7 +25,9 @@ public class LoginRequest {
     @Size(min = 8, max = 20, message = "Password must be between 8 and 20 characters.")
     private String password;
 
-
+    @NotBlank(message = "OTP is required.")
+    @Size(min = 6, max = 6, message = "OTP must be 6 digits.")
     private String otp;
+
 
 }

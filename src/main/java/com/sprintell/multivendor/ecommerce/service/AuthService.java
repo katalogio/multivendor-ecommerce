@@ -13,8 +13,7 @@ public interface AuthService {
 
     String createUser(SignupRequest req) throws Exception;
 
-    String resetPassword ();
 
-    String changePassword ();
+
     AuthResponse login(LoginRequest req) throws Exception;
 }

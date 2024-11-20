@@ -29,9 +29,7 @@ public class OtpService {
         Optional<VerificationCode> existingCodeOpt = verificationCodeRepository.findByEmail(email);
         if (existingCodeOpt.isPresent()) {
             VerificationCode existingCode = existingCodeOpt.get();
-            if (existingCode.getExpiresAt().isAfter(LocalDateTime.now())) {
-                throw new OtpException.OtpAlreadySentException("OTP already sent. Please wait before requesting a new OTP.");
-            }
+
         }
 
         // Generate new OTP

@@ -1,6 +1,7 @@
 package com.sprintell.multivendor.ecommerce.service;
 
 import jakarta.mail.MessagingException;
+import jakarta.mail.internet.AddressException;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -61,6 +62,33 @@ public class EmailService {
         } catch (Exception e) {
             System.err.println("Unexpected Exception: " + e.getMessage());
             throw new RuntimeException("Failed to send email due to unexpected exception", e);
+        }
+    }
+
+    public void sendTokenEmail (String to, String subject, String body){
+        try {
+            System.out.println("Sending token email to: " + to);
+
+//            trim and validate email format
+            to = to.replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", "").trim();
+            InternetAddress emailAddr = new InternetAddress(to);
+            emailAddr.validate();
+
+//            create and send the email
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage);
+
+            mimeMessageHelper.setSubject(subject);
+            mimeMessageHelper.setText(body, true); //true for HTML content
+            mimeMessageHelper.setTo(to);
+
+            javaMailSender.send(mimeMessage);
+            System.out.println("Token email sent successfully to" + to);
+
+        } catch (AddressException e) {
+            throw new RuntimeException(e);
+        } catch (MessagingException e) {
+            throw new RuntimeException(e);
         }
     }
 }

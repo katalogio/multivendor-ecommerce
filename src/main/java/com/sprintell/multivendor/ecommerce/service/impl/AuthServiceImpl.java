@@ -2,8 +2,10 @@ package com.sprintell.multivendor.ecommerce.service.impl;
 
 import com.sprintell.multivendor.ecommerce.config.JwtProvider;
 import com.sprintell.multivendor.ecommerce.domain.USER_ROLE;
+import com.sprintell.multivendor.ecommerce.exception.DuplicateUserException;
 import com.sprintell.multivendor.ecommerce.exception.OtpException;
 import com.sprintell.multivendor.ecommerce.model.Cart;
+import com.sprintell.multivendor.ecommerce.model.PasswordResetToken;
 import com.sprintell.multivendor.ecommerce.model.User;
 import com.sprintell.multivendor.ecommerce.model.VerificationCode;
 import com.sprintell.multivendor.ecommerce.repository.CartRepository;
@@ -15,6 +17,7 @@ import com.sprintell.multivendor.ecommerce.response.AuthResponse;
 import com.sprintell.multivendor.ecommerce.service.AuthService;
 import com.sprintell.multivendor.ecommerce.service.EmailService;
 import com.sprintell.multivendor.ecommerce.service.OtpService;
+import com.sprintell.multivendor.ecommerce.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -22,6 +25,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -40,29 +44,48 @@ public class AuthServiceImpl implements AuthService {
     private final VerificationCodeRepository verificationCodeRepository;
     private final EmailService emailService;
     private final OtpService otpService;
+    private final UserService userService;
 
     @Override
     public void sendSignupOtp(String email) throws Exception {
-        if (userRepository.existsByEmail(email)) {  // Check if email already exists
-            throw new Exception("Email already in use. Please log in.");
-        }
-        otpService.sendOtp(email);  // Send OTP after verifying the email is not in use
-    }
+        try {
+            // Check if a user exists with the given email
+            userService.validateUniqueUser(email);
 
+            // If no exception is thrown, it means the email is already in use
+            throw new Exception("Email already in use. Please log in.");
+        } catch (UsernameNotFoundException e) {
+            // If no user is found, it's safe to send the OTP
+            otpService.sendOtp(email);
+        } catch (DuplicateUserException e) {
+            // Handle the case where multiple users exist with the same email
+            throw new Exception("Multiple accounts found with this email. Please contact support.");
+        }
+    }
     @Override
     public void sendLoginOtp(String email, String password) throws Exception {
-        Optional<User> userOpt = userRepository.findByEmail(email);
-        if (userOpt.isEmpty()) {
-            throw new Exception("User not found.");
-        }
-        User user = userOpt.get();
+        try {
+            // Validate user and retrieve user details
+            User user = userService.validateUniqueUser(email);
 
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new Exception("Invalid email or password.");
-        }
+            // Check if password matches
+            if (!passwordEncoder.matches(password, user.getPassword())) {
+                throw new Exception("Invalid email or password.");
+            }
 
-        otpService.sendOtp(email);  // Send OTP for login
+
+            // Send OTP
+            otpService.sendOtp(email);
+
+        } catch (UsernameNotFoundException e) {
+            throw new Exception("User not found with email: " + email);
+        } catch (DuplicateUserException e) {
+            throw new Exception("Multiple accounts found with this email. Please contact support.");
+        } catch (Exception e) {
+            throw new Exception("Failed to send OTP. Reason: " + e.getMessage());
+        }
     }
+
 
     @Override
     public String createUser(SignupRequest req) throws Exception {
@@ -100,50 +123,42 @@ public class AuthServiceImpl implements AuthService {
         return jwtProvider.generateToken(authentication);
     }
 
-    @Override
-    public String resetPassword() {
-        return "";
-    }
 
-    @Override
-    public String changePassword() {
-        return "";
-    }
+
 
     @Override
     public AuthResponse login(LoginRequest req) throws Exception {
-        Authentication authentication = authenticate(req.getEmail(), req.getPassword(), req.getOtp());
+        // Validate user credentials
+        User user = userService.validateUniqueUser(req.getEmail());
+        if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
+            throw new BadCredentialsException("Invalid email or password.");
+        }
+
+        // Validate OTP
+        try {
+            otpService.validateOtp(req.getEmail(), req.getOtp());
+        } catch (OtpException.OtpExpiredException e) {
+            throw new BadCredentialsException("OTP has expired. Please request a new one.");
+        } catch (OtpException.OtpInvalidException e) {
+            throw new BadCredentialsException("Invalid OTP. Please try again.");
+        } catch (OtpException.MaxOtpAttemptsExceededException e) {
+            throw new BadCredentialsException("Too many failed OTP attempts. Please try again later.");
+        }
+
+        // Authenticate user and generate token
+        Authentication authentication = createAuthenticationToken(user);
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         String token = jwtProvider.generateToken(authentication);
-        AuthResponse response = new AuthResponse(token, "Login successful", USER_ROLE.ROLE_CUSTOMER);
-        response.setJwt(token);
-        response.setMessage("Login successful");
-        response.setRole(USER_ROLE.ROLE_CUSTOMER); // Set the user's role
-        return response;
+        return new AuthResponse(token, "Login successful", USER_ROLE.ROLE_CUSTOMER);
     }
 
-    private Authentication authenticate(String email, String password, String otp) throws Exception {
-        Optional<User> userOpt = userRepository.findByEmail(email);
-        if (userOpt.isEmpty()) {
-            throw new BadCredentialsException("Invalid credentials.");
-        }
-
-        User user = userOpt.get();
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new BadCredentialsException("Invalid credentials.");
-        }
-
-//        boolean otpValid = otpService.validateOtp(email, otp);
-//        if (!otpValid) {
-//            throw new BadCredentialsException("Invalid OTP.");
-//        }
-        Optional<VerificationCode> verificationCode = verificationCodeRepository.findByEmail(email);
-        if (verificationCode.isEmpty() || !verificationCode.get().getOtp().equals(otp) ){
-            throw new BadCredentialsException("invalid otp");
-        }
-
-        Collection<? extends GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(user.getRole().toString()));
+    private Authentication createAuthenticationToken(User user) {
+        Collection<? extends GrantedAuthority> authorities = List.of(
+                new SimpleGrantedAuthority(user.getRole().toString())
+        );
         return new UsernamePasswordAuthenticationToken(user, null, authorities);
     }
+
+
 }

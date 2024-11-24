@@ -16,4 +16,8 @@ public class AuthResponse {
         this.message = message;
         this.role = role;
     }
+
+    public AuthResponse() {
+
+    }
 }

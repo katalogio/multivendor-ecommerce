@@ -11,4 +11,6 @@ public interface VerificationCodeRepository extends JpaRepository <VerificationC
     @QueryHints(value = @QueryHint(name = "org.hibernate.cacheable", value = "false"))
     Optional<VerificationCode> findByEmail (String email);
     Optional<VerificationCode> findByOtp(String otp);
+
+    void delete(VerificationCode isExist);
 }

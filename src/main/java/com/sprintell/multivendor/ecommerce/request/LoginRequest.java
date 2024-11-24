@@ -1,6 +1,7 @@
 package com.sprintell.multivendor.ecommerce.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.sprintell.multivendor.ecommerce.domain.USER_ROLE;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -28,6 +29,8 @@ public class LoginRequest {
     @NotBlank(message = "OTP is required.")
     @Size(min = 6, max = 6, message = "OTP must be 6 digits.")
     private String otp;
+
+
 
 
 }

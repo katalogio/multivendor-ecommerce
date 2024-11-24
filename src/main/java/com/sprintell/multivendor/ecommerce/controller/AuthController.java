@@ -3,15 +3,11 @@ package com.sprintell.multivendor.ecommerce.controller;
 import com.sprintell.multivendor.ecommerce.domain.USER_ROLE;
 import com.sprintell.multivendor.ecommerce.exception.OtpException;
 import com.sprintell.multivendor.ecommerce.model.User;
-import com.sprintell.multivendor.ecommerce.request.PasswordResetConfirmationRequest;
-import com.sprintell.multivendor.ecommerce.request.PasswordResetRequest;
+import com.sprintell.multivendor.ecommerce.request.*;
 import com.sprintell.multivendor.ecommerce.response.ApiResponse;
 import com.sprintell.multivendor.ecommerce.response.AuthResponse;
-import com.sprintell.multivendor.ecommerce.request.SignupRequest;
-import com.sprintell.multivendor.ecommerce.request.LoginRequest;
 import com.sprintell.multivendor.ecommerce.service.AuthService;
 import com.sprintell.multivendor.ecommerce.service.PasswordResetService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -56,9 +52,9 @@ public class AuthController {
         return ResponseEntity.ok(res);
     }
 
-    @PostMapping("/send/login-otp") // Changed to match the service method name
-    public ResponseEntity<ApiResponse> sendLoginOtpHandler(@RequestBody LoginRequest req) throws Exception { // Expecting email and password
-        authService.sendLoginOtp(req.getEmail(), req.getPassword());  // Pass both email and password
+    @PostMapping("/send/login-otp")
+    public ResponseEntity<ApiResponse> sendLoginOtpHandler(@RequestBody LoginOtpRequest req) throws Exception { // Expecting email and password
+        authService.sendLoginOtp(req.getEmail(), req.getPassword(),req.getRole() );  // Pass both email and password
         return ResponseEntity.ok(new ApiResponse().setMessage("Otp sent successfully"));
     }
 
